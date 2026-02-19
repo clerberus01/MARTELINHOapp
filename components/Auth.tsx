@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import Logo from './Logo';
-import { PRIVACY_POLICY } from '../constants';
+import { PRIVACY_POLICY, TERMS_DISCLAIMER } from '../constants';
 
 interface AuthProps {
   onLogin: (userData: any) => void;
@@ -11,7 +11,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [agreedToLegal, setAgreedToLegal] = useState(false);
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
-  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState<null | 'privacy' | 'terms'>(null);
+  
   const [formData, setFormData] = useState({
     name: '',
     fullName: '',
@@ -26,7 +27,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isLogin && (!agreedToLegal || !agreedToPrivacy)) {
-      alert("Para sua segurança e conformidade com a LGPD, você deve aceitar os Termos e a Política de Privacidade.");
+      alert("Para sua segurança e conformidade com a LGPD, você deve aceitar os Termos e a Política de Privacidade individualmente.");
       return;
     }
 
@@ -43,7 +44,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       creditBalance: 0,
       isTrustedMachine: formData.isTrusted,
       lastNickChange: Date.now(),
-      reputationScore: 85, // Usuário novo começa com boa fé moderada
+      reputationScore: 85,
       successfulDeals: 0,
       totalRatings: 0
     };
@@ -87,16 +88,22 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               ) : (
                 <div className="space-y-3">
                   <input type="text" required className="w-full px-4 py-2.5 rounded-xl border-2 border-black font-bold outline-none text-xs" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} placeholder="Nome Completo" />
-                  <input type="text" required className="w-full px-4 py-2.5 rounded-xl border-2 border-black font-bold outline-none text-xs" value={formData.cpf} onChange={e => setFormData({...formData, cpf: e.target.value})} placeholder="CPF (Segurança)" />
+                  <input type="text" required className="w-full px-4 py-2.5 rounded-xl border-2 border-black font-bold outline-none text-xs" value={formData.cpf} onChange={e => setFormData({...formData, cpf: e.target.value})} placeholder="CPF (Segurança Jurídica)" />
                   <input type="email" required className="w-full px-4 py-2.5 rounded-xl border-2 border-black font-bold outline-none text-xs" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="E-mail" />
                   <input type="text" required className="w-full px-4 py-2.5 rounded-xl border-2 border-black font-bold outline-none text-xs" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} placeholder="Cidade, UF (Ex: São Paulo, SP)" />
                   <input type="password" required className="w-full px-4 py-2.5 rounded-xl border-2 border-black font-bold outline-none text-xs" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="Criar Senha" />
 
-                  <div className="bg-zinc-50 border-2 border-black p-3 rounded-xl space-y-2 mt-4">
-                    <label className="flex items-start gap-2 cursor-pointer">
-                      <input type="checkbox" required className="w-4 h-4 accent-black mt-0.5" checked={agreedToPrivacy} onChange={e => setAgreedToPrivacy(e.target.checked)} />
-                      <span className="text-[8px] font-bold uppercase text-black leading-tight">
-                        Aceito a <button type="button" onClick={() => setShowPrivacyModal(true)} className="underline decoration-yellow-400">Política de Privacidade (LGPD)</button>.
+                  <div className="bg-zinc-50 border-2 border-black p-4 rounded-xl space-y-3 mt-4">
+                    <label className="flex items-start gap-3 cursor-pointer group">
+                      <input type="checkbox" required className="w-5 h-5 accent-black mt-0.5 shrink-0" checked={agreedToPrivacy} onChange={e => setAgreedToPrivacy(e.target.checked)} />
+                      <span className="text-[9px] font-black uppercase text-black leading-tight group-hover:text-yellow-600 transition-colors">
+                        Aceito a <button type="button" onClick={() => setShowPrivacyModal('privacy')} className="underline">Política de Privacidade (LGPD)</button>
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-3 cursor-pointer group">
+                      <input type="checkbox" required className="w-5 h-5 accent-black mt-0.5 shrink-0" checked={agreedToLegal} onChange={e => setAgreedToLegal(e.target.checked)} />
+                      <span className="text-[9px] font-black uppercase text-black leading-tight group-hover:text-yellow-600 transition-colors">
+                        Concordo com os <button type="button" onClick={() => setShowPrivacyModal('terms')} className="underline">Termos de Uso e Mediação</button>
                       </span>
                     </label>
                   </div>
@@ -104,7 +111,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               )}
 
               <button type="submit" className="w-full bg-black text-yellow-400 font-black py-4 rounded-xl uppercase text-sm shadow-[0_4px_0_0_#FACC15] hover:translate-y-1 hover:shadow-none active:scale-95 transition-all border-2 border-black">
-                {isLogin ? 'ENTRAR AGORA 🔨' : 'CRIAR CONTA ✅'}
+                {isLogin ? 'ENTRAR AGORA 🔨' : 'BATER MARTELO NO CADASTRO ✅'}
               </button>
             </form>
 
@@ -118,12 +125,23 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             </div>
           </div>
         </div>
-
-        <div className="mt-4 flex items-center justify-center gap-4 opacity-20">
-          <span className="text-[8px] font-black uppercase tracking-widest flex items-center gap-1">🛡️ LGPD SAFE</span>
-          <span className="text-[8px] font-black uppercase tracking-widest flex items-center gap-1">🔒 SSL SECURE</span>
-        </div>
       </div>
+
+      {showPrivacyModal && (
+        <div className="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white border-4 border-black max-w-lg w-full rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in duration-200">
+             <div className="bg-black p-4 flex justify-between items-center">
+                <h3 className="text-yellow-400 font-black uppercase italic tracking-tighter">
+                  {showPrivacyModal === 'privacy' ? '🛡️ Política de Privacidade' : '📜 Termos de Uso'}
+                </h3>
+                <button onClick={() => setShowPrivacyModal(null)} className="text-white font-black">FECHAR ✕</button>
+             </div>
+             <div className="p-8 max-h-[60vh] overflow-y-auto font-bold uppercase text-[10px] text-zinc-600 leading-relaxed whitespace-pre-wrap">
+                {showPrivacyModal === 'privacy' ? PRIVACY_POLICY.content : Object.values(TERMS_DISCLAIMER).join('\n\n')}
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

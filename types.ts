@@ -1,5 +1,5 @@
 
-export enum AuctionStatus {
+export enum AdStatus {
   ACTIVE = 'active',
   ENDED = 'ended',
   CANCELLED = 'cancelled',
@@ -36,7 +36,7 @@ export interface Message {
   timestamp: number;
 }
 
-export interface AuctionItem {
+export interface AdItem {
   id: string;
   title: string;
   description: string;
@@ -48,9 +48,9 @@ export interface AuctionItem {
   imageUrls: string[];
   sellerId: string;
   sellerName: string;
-  sellerReputation?: number; // Score 0-100 do vendedor na época do anúncio
+  sellerReputation?: number;
   endTime: number;
-  status: AuctionStatus;
+  status: AdStatus;
   energyScore: number;
   energyMessage?: string;
   location: string;
@@ -81,7 +81,7 @@ export interface User {
   isTrustedMachine?: boolean;
   isAdmin?: boolean;
   lastNickChange?: number;
-  reputationScore: number; // 0-100
+  reputationScore: number;
   successfulDeals: number;
   totalRatings: number;
 }

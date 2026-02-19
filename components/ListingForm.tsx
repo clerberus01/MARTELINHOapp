@@ -1,8 +1,7 @@
 
 import React, { useState } from 'react';
 import { CATEGORIES } from '../constants';
-import { analyzeItemForDesapego } from '../services/geminiService';
-import { AuctionStatus } from '../types';
+import { AdStatus } from '../types';
 
 interface ListingFormProps {
   onSuccess: (newItem: any) => void;
@@ -28,7 +27,6 @@ const ListingForm: React.FC<ListingFormProps> = ({ onSuccess, onCancel }) => {
     swapInterests: ''
   });
   const [images, setImages] = useState<string[]>([]);
-  const [aiSuggestion, setAiSuggestion] = useState<any>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -61,16 +59,8 @@ const ListingForm: React.FC<ListingFormProps> = ({ onSuccess, onCancel }) => {
     if (!validate()) return;
 
     setLoading(true);
-    try {
-      // Opcional: Análise IA para melhorar o anúncio
-      const suggestion = await analyzeItemForDesapego(formData.title, formData.description, images[0]);
-      setAiSuggestion(suggestion);
-    } catch (err) {
-      console.error("Erro na curadoria IA:", err);
-    } finally {
-      setLoading(false);
-    }
-
+    
+    // Publicação direta sem etapa de revisão ou análise por IA conforme solicitado
     const days = Math.min(Math.max(Number(formData.durationDays), 1), 10);
     const newItem = {
       id: 'auc_' + Math.random().toString(36).substr(2, 9),
@@ -85,7 +75,7 @@ const ListingForm: React.FC<ListingFormProps> = ({ onSuccess, onCancel }) => {
       sellerId: 'me',
       sellerName: 'você',
       endTime: Date.now() + 1000 * 60 * 60 * 24 * days,
-      status: AuctionStatus.ACTIVE,
+      status: AdStatus.ACTIVE,
       energyScore: 7,
       location: formData.location,
       deliveryInfo: formData.deliveryInfo || 'A combinar entrega presencial',
@@ -96,8 +86,11 @@ const ListingForm: React.FC<ListingFormProps> = ({ onSuccess, onCancel }) => {
       chatMessages: []
     };
 
-    setShowSuccess(true);
-    setTimeout(() => onSuccess(newItem), 2000);
+    setTimeout(() => {
+      setShowSuccess(true);
+      setLoading(false);
+      setTimeout(() => onSuccess(newItem), 1500);
+    }, 800);
   };
 
   return (
@@ -127,7 +120,6 @@ const ListingForm: React.FC<ListingFormProps> = ({ onSuccess, onCancel }) => {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Seção de Fotos e Detalhes */}
             <div className="space-y-6">
               <div>
                 <label className="block text-[10px] font-black uppercase mb-2 tracking-widest text-zinc-400">Fotos Reais (Máx 5)</label>
@@ -166,7 +158,6 @@ const ListingForm: React.FC<ListingFormProps> = ({ onSuccess, onCancel }) => {
               </div>
             </div>
 
-            {/* Seção de Dados do Leilão */}
             <div className="space-y-5">
               <div>
                 <label className="block text-[10px] font-black uppercase mb-1 tracking-widest text-zinc-400">O que você está vendendo?</label>
@@ -257,7 +248,7 @@ const ListingForm: React.FC<ListingFormProps> = ({ onSuccess, onCancel }) => {
                 <div className="space-y-1">
                   <span className="text-[10px] font-black uppercase text-yellow-400 block">Termo de Responsabilidade</span>
                   <span className="text-[9px] font-medium leading-tight text-zinc-400 block">
-                    Declaro que o item é meu e as fotos são reais. Entendo que o Martelinho retém 10% de comissão e que sou responsável pela entrega conforme combinado no chat após o arremate.
+                    Declaro que o item é meu e as fotos são reais. Entendo que o Martelinho retém 10% de comissão e que sou responsável pela entrega conforme combinado no chat após o fechamento da disputa.
                   </span>
                 </div>
              </label>
@@ -268,7 +259,7 @@ const ListingForm: React.FC<ListingFormProps> = ({ onSuccess, onCancel }) => {
                 className={`w-full py-5 rounded-xl font-black text-xl uppercase italic tracking-tighter border-4 border-white transition-all
                   ${loading ? 'bg-zinc-800 cursor-wait' : 'bg-yellow-400 text-black shadow-[0_6px_0_0_#fff] hover:translate-y-1 hover:shadow-none'}`}
               >
-                {loading ? 'ANALISANDO...' : 'PUBLICAR AGORA 🔨'}
+                {loading ? 'PUBLICANDO...' : 'PUBLICAR AGORA 🔨'}
               </button>
           </div>
         </form>

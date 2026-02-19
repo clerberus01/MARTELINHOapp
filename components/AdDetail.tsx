@@ -1,14 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-// Fix: Renamed AuctionItem to AdItem and AuctionStatus to AdStatus to match types.ts
 import { AdItem, AdStatus, User, Message } from '../types';
 
-interface AuctionDetailProps {
-  // Fix: Use AdItem instead of AuctionItem
+interface AdDetailProps {
   ad: AdItem;
   user: User;
   userHasItems: boolean;
-  // Fix: Use AdItem instead of AuctionItem
   userItems: AdItem[];
   onPlaceBid: (adId: string, amount: number) => void;
   onProposeSwap: (adId: string, offeredItemId: string) => void;
@@ -18,7 +15,7 @@ interface AuctionDetailProps {
   onBack: () => void;
 }
 
-const AuctionDetail: React.FC<AuctionDetailProps> = ({ 
+const AdDetail: React.FC<AdDetailProps> = ({ 
   ad, user, userHasItems, userItems, onPlaceBid, onProposeSwap, onAcceptSwap, onPaySwapFee, onSendMessage, onBack 
 }) => {
   const [bidAmount, setBidAmount] = useState<string>('');
@@ -27,17 +24,14 @@ const AuctionDetail: React.FC<AuctionDetailProps> = ({
   const [chatInput, setChatInput] = useState('');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  // Fix: Use ad instead of auction
   const isSeller = ad.sellerId === 'me' || ad.sellerId === user.id;
   const isSwapParticipant = isSeller || ad.swapOffers?.some(o => o.proposerId === user.id && o.status === 'paid');
   const chatEnabled = ad.status === AdStatus.SWAP_IN_PROGRESS && isSwapParticipant;
 
-  const auctionCity = ad.location.toLowerCase().split(',')[0].trim();
   const productImages = ad.imageUrls || [ad.imageUrl];
 
   useEffect(() => {
     const timer = setInterval(() => {
-      // Fix: Use ad.endTime instead of auction.endTime
       const diff = ad.endTime - Date.now();
       if (diff <= 0) {
         setTimeLeft('FIM');
@@ -55,8 +49,7 @@ const AuctionDetail: React.FC<AuctionDetailProps> = ({
   const handleBid = (e: React.FormEvent) => {
     e.preventDefault();
     const amount = Number(bidAmount);
-    // Fix: Use ad.currentBid instead of auction.currentBid
-    if (amount <= ad.currentBid) return alert("Cubra o lance atual!");
+    if (amount <= ad.currentBid) return alert("Cubra a oferta atual!");
     onPlaceBid(ad.id, amount);
     setBidAmount('');
   };
@@ -77,7 +70,6 @@ const AuctionDetail: React.FC<AuctionDetailProps> = ({
       </div>
 
       <div className="flex flex-col md:flex-row gap-6">
-        {/* Left Side: Images & Info */}
         <div className="md:w-3/5 space-y-4">
           <div className="bg-zinc-50 border-2 border-black rounded-xl overflow-hidden relative max-h-[250px] aspect-video flex items-center justify-center">
             <img 
@@ -114,20 +106,19 @@ const AuctionDetail: React.FC<AuctionDetailProps> = ({
                 <p className="text-[9px] font-black uppercase">📍 {ad.location}</p>
               </div>
               <div className="flex-1 text-right">
-                <p className="text-[7px] font-black uppercase text-zinc-300">Vendedor</p>
+                <p className="text-[7px] font-black uppercase text-zinc-300">Anunciante</p>
                 <p className="text-[9px] font-black uppercase">@{ad.sellerName}</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Side: Bidding & Swap */}
         <div className="md:w-2/5">
           <div className="bg-white border-2 border-black p-4 rounded-xl shadow-[4px_4px_0px_0px_#000] sticky top-24">
             <div className="mb-4">
-              <p className="text-[8px] font-black uppercase text-zinc-300 mb-0.5">Lance Atual</p>
+              <p className="text-[8px] font-black uppercase text-zinc-300 mb-0.5">Oferta Atual</p>
               <p className="text-3xl font-black tracking-tighter leading-none">R$ {ad.currentBid}</p>
-              <p className="text-[7px] font-bold text-zinc-400 mt-1 uppercase italic">{ad.bidCount} lances registrados</p>
+              <p className="text-[7px] font-bold text-zinc-400 mt-1 uppercase italic">{ad.bidCount} interessados</p>
             </div>
 
             {ad.status === AdStatus.ACTIVE ? (
@@ -139,7 +130,7 @@ const AuctionDetail: React.FC<AuctionDetailProps> = ({
                   value={bidAmount}
                   onChange={e => setBidAmount(e.target.value)}
                 />
-                <button type="submit" className="w-full bg-black text-yellow-400 font-black py-3 rounded-lg text-xs uppercase hover:bg-yellow-400 hover:text-black transition-all">Cobrir Lance 🔨</button>
+                <button type="submit" className="w-full bg-black text-yellow-400 font-black py-3 rounded-lg text-xs uppercase hover:bg-yellow-400 hover:text-black transition-all">Enviar Lance 🔨</button>
                 {ad.acceptsSwap && !isSeller && (
                   <button 
                     type="button"
@@ -151,7 +142,7 @@ const AuctionDetail: React.FC<AuctionDetailProps> = ({
                 )}
               </form>
             ) : (
-              <div className="p-3 bg-zinc-50 text-center text-[9px] font-black uppercase italic text-zinc-400">Leilão Encerrado.</div>
+              <div className="p-3 bg-zinc-50 text-center text-[9px] font-black uppercase italic text-zinc-400">Venda Finalizada.</div>
             )}
           </div>
         </div>
@@ -172,7 +163,7 @@ const AuctionDetail: React.FC<AuctionDetailProps> = ({
           <form onSubmit={handleSendChat} className="flex gap-1">
             <input 
               type="text" value={chatInput} onChange={e => setChatInput(e.target.value)}
-              placeholder="Falar com vendedor..."
+              placeholder="Falar com anunciante..."
               className="flex-grow bg-zinc-50 border border-black/20 p-2 rounded font-black uppercase text-[9px] outline-none"
             />
             <button type="submit" className="bg-black text-white px-3 py-1.5 rounded font-black uppercase text-[9px]">Ok</button>
@@ -200,4 +191,4 @@ const AuctionDetail: React.FC<AuctionDetailProps> = ({
   );
 };
 
-export default AuctionDetail;
+export default AdDetail;

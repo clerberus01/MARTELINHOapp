@@ -5,7 +5,7 @@ import Logo from './Logo';
 
 interface LayoutProps {
   children: React.ReactNode;
-  onNavigate: (page: 'home' | 'create' | 'profile') => void;
+  onNavigate: (page: string) => void;
   currentPage: string;
   user: User;
   searchQuery: string;
@@ -38,7 +38,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, currentPage, user
               <Logo className="h-7 md:h-10" />
             </div>
 
-            {/* Search Bar - Desktop Only (Renderizado apenas na Home) */}
+            {/* Search Bar - Desktop Only */}
             {currentPage === 'home' ? (
               <div className="hidden md:flex flex-grow max-w-2xl relative animate-in fade-in slide-in-from-top-1 duration-300">
                 <input 
@@ -51,7 +51,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, currentPage, user
                 <button className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400">🔍</button>
               </div>
             ) : (
-              <div className="hidden md:block flex-grow"></div> // Spacer para manter o layout quando não houver busca
+              <div className="hidden md:block flex-grow"></div>
             )}
 
             {/* Actions */}
@@ -83,7 +83,6 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, currentPage, user
             </nav>
           </div>
 
-          {/* Search Bar - Mobile Only Row (Renderizado apenas na Home) */}
           {currentPage === 'home' && (
             <div className="md:hidden pb-4 animate-in fade-in slide-in-from-top-1 duration-300">
               <div className="relative">
@@ -113,7 +112,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, currentPage, user
         <button onClick={() => onNavigate('profile')} className={`text-xl ${currentPage === 'profile' ? 'text-black' : 'text-zinc-300'}`}>👤</button>
       </div>
 
-      {/* LGPD Banner */}
+      {/* Cookie Banner */}
       {showCookieBanner && (
         <div className="fixed bottom-20 md:bottom-8 left-4 right-4 md:left-auto md:right-8 z-50">
           <div className="bg-black text-white p-4 md:p-6 rounded-xl shadow-2xl flex flex-col md:flex-row items-center gap-4 max-w-lg border-2 border-yellow-400">
@@ -133,7 +132,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, currentPage, user
       <footer className="bg-zinc-50 border-t border-zinc-200 py-12 hidden md:block mt-20">
         <div className="max-w-[1600px] mx-auto px-8 grid grid-cols-4 gap-10">
           <div className="col-span-1">
-            <Logo className="h-8 mb-4 opacity-50" />
+            <Logo className="h-8 mb-4 opacity-50 cursor-pointer" onClick={() => onNavigate('home')} />
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-relaxed">
               Intermediação transparente de desapegos. Segurança total em cada batida de martelo.
             </p>
@@ -141,9 +140,9 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, currentPage, user
           <div className="space-y-4">
             <h4 className="text-[11px] font-black uppercase tracking-widest">Plataforma</h4>
             <ul className="space-y-2 text-[10px] font-bold text-zinc-400 uppercase">
-              <li className="hover:text-black cursor-pointer">Como funciona</li>
-              <li className="hover:text-black cursor-pointer">Taxas e Prazos</li>
-              <li className="hover:text-black cursor-pointer">Segurança LGPD</li>
+              <li className="hover:text-black cursor-pointer transition-colors" onClick={() => onNavigate('how-it-works')}>Como funciona</li>
+              <li className="hover:text-black cursor-pointer transition-colors" onClick={() => onNavigate('fees')}>Taxas e Prazos</li>
+              <li className="hover:text-black cursor-pointer transition-colors" onClick={() => onNavigate('lgpd')}>Segurança LGPD</li>
             </ul>
           </div>
           <div className="space-y-4">

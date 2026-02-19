@@ -7,18 +7,27 @@ export const AUTO_RELEASE_DAYS = 3;
 
 export const TERMS_DISCLAIMER = {
   delivery: "O Martelinho atua exclusivamente como intermediário financeiro. O frete e a integridade do item são de responsabilidade TOTAL das partes envolvidas.",
-  fees: "Nossas taxas são retidas no ato do arremate. Não há estorno de taxas em caso de desistência, pois o serviço de intermediação é prestado no fechamento do lance.",
+  fees: "Nossas taxas são retidas no ato do arremate. Não há estorno de taxas em caso de desistência, pois o serviço de intermediação é prestado no fechamento da disputa.",
   autoRelease: "Segurança: O dinheiro fica em custódia. O comprador tem 72h após o recebimento para contestar. Sem aviso, o valor é liberado automaticamente ao vendedor.",
   cancellation: "Responsabilidade: Usuários que não honrarem o pagamento serão banidos e seus dados preservados para fins de cobrança e segurança jurídica."
 };
 
 export const PRIVACY_POLICY = {
   title: "Política de Privacidade & LGPD",
-  content: `Coletamos seu CPF e Endereço exclusivamente para: 
-    1. Garantir a segurança jurídica das transações (intermediação de compra e venda).
-    2. Possibilitar a logística entre as partes.
-    3. Cumprir obrigações legais de identificação em transações financeiras.
-    Seus dados NÃO são compartilhados com terceiros para fins de marketing. Você pode solicitar a exclusão de seus dados a qualquer momento em seu perfil.`
+  content: `O Martelinho (Intermediações Digitais) preza pela proteção de seus dados pessoais em conformidade com a Lei 13.709/2018 (LGPD).
+    
+    1. FINALIDADE DA COLETA:
+    - CPF e Nome Completo: Obrigatórios para a emissão de comprovantes de transação e prevenção a crimes financeiros/lavagem de dinheiro (Art. 7º, II e VI).
+    - Endereço e Telefone: Necessários para a execução do contrato de compra e venda entre as partes (Art. 7º, V).
+    
+    2. COMPARTILHAMENTO:
+    Seus dados de contato e endereço são revelados apenas à contraparte da sua negociação específica APÓS a confirmação do pagamento, visando a entrega do bem.
+    
+    3. SEUS DIREITOS:
+    Você possui direito de acesso, correção, anonimização ou exclusão de seus dados, bem como a portabilidade das informações através das configurações de seu perfil.
+    
+    4. RETENÇÃO:
+    Dados de transações financeiras são conservados pelo prazo legal exigido pelo Código Civil e normas do Banco Central.`
 };
 
 export interface CategoryInfo {
@@ -40,7 +49,7 @@ export const CATEGORIES: CategoryInfo[] = [
   { id: 'outros', name: 'Outros', description: 'Categoria geral', icon: '📦' }
 ];
 
-export const INITIAL_AUCTIONS = [
+export const INITIAL_ADS = [
   {
     id: '1',
     title: 'Furadeira Bosch Profissional',

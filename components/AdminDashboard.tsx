@@ -1,15 +1,15 @@
 
 import React from 'react';
-import { AuctionItem } from '../types';
+import { AdItem } from '../types';
 
 interface AdminDashboardProps {
-  auctions: AuctionItem[];
-  onStartLive: (auctionId: string) => void;
-  onToggleLiveFeatured: (auctionId: string) => void;
+  ads: AdItem[];
+  onStartLive: (adId: string) => void;
+  onToggleLiveFeatured: (adId: string) => void;
   onBack: () => void;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ auctions, onStartLive, onToggleLiveFeatured, onBack }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ ads, onStartLive, onToggleLiveFeatured, onBack }) => {
   return (
     <div className="max-w-7xl mx-auto p-4 space-y-8 pb-20">
       <div className="flex justify-between items-center">
@@ -22,36 +22,36 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ auctions, onStartLive, 
           <thead className="bg-yellow-400 border-b-4 border-black">
             <tr>
               <th className="p-4 font-black uppercase text-xs">Item em Disputa</th>
-              <th className="p-4 font-black uppercase text-xs">Ofertante</th>
-              <th className="p-4 font-black uppercase text-xs">Lances</th>
-              <th className="p-4 font-black uppercase text-xs">Lance Atual</th>
+              <th className="p-4 font-black uppercase text-xs">Anunciante</th>
+              <th className="p-4 font-black uppercase text-xs">Interessados</th>
+              <th className="p-4 font-black uppercase text-xs">Oferta Atual</th>
               <th className="p-4 font-black uppercase text-xs">Em Destaque</th>
               <th className="p-4 font-black uppercase text-xs">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y-4 divide-black">
-            {auctions.map(auction => (
-              <tr key={auction.id} className="hover:bg-slate-50 transition-colors">
+            {ads.map(ad => (
+              <tr key={ad.id} className="hover:bg-slate-50 transition-colors">
                 <td className="p-4">
                   <div className="flex items-center gap-3">
-                    <img src={auction.imageUrl} className="w-12 h-12 rounded-lg border-2 border-black object-cover" />
-                    <span className="font-bold text-sm uppercase">{auction.title}</span>
+                    <img src={ad.imageUrl} className="w-12 h-12 rounded-lg border-2 border-black object-cover" />
+                    <span className="font-bold text-sm uppercase">{ad.title}</span>
                   </div>
                 </td>
-                <td className="p-4 font-bold text-xs">@{auction.sellerName}</td>
-                <td className="p-4 font-black">{auction.bidCount}</td>
-                <td className="p-4 font-black text-emerald-600">R$ {auction.currentBid}</td>
+                <td className="p-4 font-bold text-xs">@{ad.sellerName}</td>
+                <td className="p-4 font-black">{ad.bidCount}</td>
+                <td className="p-4 font-black text-emerald-600">R$ {ad.currentBid}</td>
                 <td className="p-4">
                   <button 
-                    onClick={() => onToggleLiveFeatured(auction.id)}
-                    className={`px-3 py-1 rounded-full border-2 border-black text-[10px] font-black uppercase ${auction.isLiveFeatured ? 'bg-red-500 text-white' : 'bg-white text-black'}`}
+                    onClick={() => onToggleLiveFeatured(ad.id)}
+                    className={`px-3 py-1 rounded-full border-2 border-black text-[10px] font-black uppercase ${ad.isLiveFeatured ? 'bg-red-500 text-white' : 'bg-white text-black'}`}
                   >
-                    {auction.isLiveFeatured ? 'Sim' : 'Não'}
+                    {ad.isLiveFeatured ? 'Sim' : 'Não'}
                   </button>
                 </td>
                 <td className="p-4">
                   <button 
-                    onClick={() => onStartLive(auction.id)}
+                    onClick={() => onStartLive(ad.id)}
                     className="bg-black text-yellow-400 px-4 py-2 rounded-lg font-black uppercase text-[10px] border-2 border-black"
                   >
                     📺 MEDIAR AO VIVO

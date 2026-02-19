@@ -1,22 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
-// Fix: Renamed AuctionItem to AdItem to match types.ts
 import { AdItem } from '../types';
 
-interface AuctionCardProps {
-  // Fix: Renamed auction to ad for consistency
+interface AdCardProps {
   ad: AdItem;
   onView: (id: string) => void;
 }
 
-const AuctionCard: React.FC<AuctionCardProps> = ({ ad, onView }) => {
+const AdCard: React.FC<AdCardProps> = ({ ad, onView }) => {
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [isEndingSoon, setIsEndingSoon] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
       const now = Date.now();
-      // Fix: Use ad.endTime instead of auction.endTime
       const diff = ad.endTime - now;
       if (diff <= 0) {
         setTimeLeft('FIM');
@@ -42,7 +39,6 @@ const AuctionCard: React.FC<AuctionCardProps> = ({ ad, onView }) => {
   return (
     <div 
       className="group bg-white border border-black/10 hover:border-black transition-all flex flex-col h-full cursor-pointer rounded-xl overflow-hidden shadow-sm hover:shadow-md"
-      // Fix: Use ad.id instead of auction.id
       onClick={() => onView(ad.id)}
     >
       <div className="relative aspect-square overflow-hidden bg-zinc-50 border-b border-black/5">
@@ -63,7 +59,7 @@ const AuctionCard: React.FC<AuctionCardProps> = ({ ad, onView }) => {
         </h3>
         <div className="flex items-end justify-between border-t border-black/5 pt-2">
            <div className="flex flex-col">
-             <span className="text-[7px] font-black text-zinc-400 uppercase leading-none mb-0.5">Lance Atual</span>
+             <span className="text-[7px] font-black text-zinc-400 uppercase leading-none mb-0.5">Oferta Atual</span>
              <span className="text-xs sm:text-sm font-black text-black leading-none">R${ad.currentBid.toLocaleString('pt-BR')}</span>
            </div>
            <span className="text-[8px] font-bold text-zinc-400 uppercase bg-zinc-50 px-1.5 py-0.5 rounded border border-black/5">🔨 {ad.bidCount}</span>
@@ -73,4 +69,4 @@ const AuctionCard: React.FC<AuctionCardProps> = ({ ad, onView }) => {
   );
 };
 
-export default AuctionCard;
+export default AdCard;

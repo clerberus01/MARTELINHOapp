@@ -1,20 +1,23 @@
 
 import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
-import AuctionCard from './components/AuctionCard';
-import AuctionDetail from './components/AuctionDetail';
+import AdCard from './components/AdCard';
+import AdDetail from './components/AdDetail';
 import ListingForm from './components/ListingForm';
 import AdminDashboard from './components/AdminDashboard';
 import LivePresentation from './components/LivePresentation';
 import Auth from './components/Auth';
 import UserProfile from './components/UserProfile';
-import { AuctionItem, AuctionStatus, User, Bid, SwapOffer, Message } from './types';
-import { INITIAL_AUCTIONS, CATEGORIES } from './constants';
+import InfoPages from './components/InfoPages'; // Import novo
+import { AdItem, AdStatus, User, Bid, SwapOffer, Message } from './types';
+import { INITIAL_ADS, CATEGORIES } from './constants';
+
+type PageType = 'home' | 'create' | 'detail' | 'admin' | 'live' | 'profile' | 'how-it-works' | 'fees' | 'lgpd';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<'home' | 'create' | 'detail' | 'admin' | 'live' | 'profile'>('home');
-  const [selectedAuctionId, setSelectedAuctionId] = useState<string | null>(null);
-  const [auctions, setAuctions] = useState<AuctionItem[]>([]);
+  const [currentPage, setCurrentPage] = useState<PageType>('home');
+  const [selectedAdId, setSelectedAdId] = useState<string | null>(null);
+  const [ads, setAds] = useState<AdItem[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   
@@ -25,20 +28,20 @@ const App: React.FC = () => {
     const savedUser = localStorage.getItem('martelinho_user');
     if (savedUser) setUser(JSON.parse(savedUser));
 
-    const savedAuctions = localStorage.getItem('martelinho_auctions');
-    if (savedAuctions) {
-      setAuctions(JSON.parse(savedAuctions));
+    const savedAds = localStorage.getItem('martelinho_ads');
+    if (savedAds) {
+      setAds(JSON.parse(savedAds));
     } else {
-      setAuctions(INITIAL_AUCTIONS as any);
+      setAds(INITIAL_ADS as any);
     }
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    if (auctions.length > 0) {
-      localStorage.setItem('martelinho_auctions', JSON.stringify(auctions));
+    if (ads.length > 0) {
+      localStorage.setItem('martelinho_ads', JSON.stringify(ads));
     }
-  }, [auctions]);
+  }, [ads]);
 
   const handleLogin = (userData: User) => {
     const adminUser = { ...userData, isAdmin: userData.name.toLowerCase().includes('admin') };
@@ -50,10 +53,10 @@ const App: React.FC = () => {
     setUser(null);
     localStorage.removeItem('martelinho_user');
     setCurrentPage('home');
-    setSelectedAuctionId(null);
+    setSelectedAdId(null);
   };
 
-  const handlePlaceBid = (auctionId: string, amount: number) => {
+  const handlePlaceBid = (adId: string, amount: number) => {
     if (!user) return;
     if (user.balance < amount) return alert("Saldo insuficiente!");
     const newBid: Bid = {
@@ -62,24 +65,24 @@ const App: React.FC = () => {
       amount: amount,
       timestamp: Date.now()
     };
-    setAuctions(prev => prev.map(a => 
-      a.id === auctionId ? { ...a, currentBid: amount, bidCount: a.bidCount + 1, bids: [newBid, ...(a.bids || [])] } : a
+    setAds(prev => prev.map(a => 
+      a.id === adId ? { ...a, currentBid: amount, bidCount: a.bidCount + 1, bids: [newBid, ...(a.bids || [])] } : a
     ));
     alert("🔨 LANCE REGISTRADO!");
   };
 
-  const handleProposeSwap = (auctionId: string, offeredItemId: string) => {
+  const handleProposeSwap = (adId: string, offeredItemId: string) => {
     if (!user) return;
-    const auction = auctions.find(a => a.id === auctionId);
-    const offeredItem = auctions.find(a => a.id === offeredItemId);
+    const ad = ads.find(a => a.id === adId);
+    const offeredItem = ads.find(a => a.id === offeredItemId);
     
-    if (!auction || !offeredItem) return;
+    if (!ad || !offeredItem) return;
 
     const userCity = user.address.toLowerCase().split(',')[0].trim();
-    const auctionCity = auction.location.toLowerCase().split(',')[0].trim();
+    const adCity = ad.location.toLowerCase().split(',')[0].trim();
 
-    if (userCity !== auctionCity) {
-      alert(`⚠️ SEGURANÇA: Trocas são permitidas apenas para usuários na mesma cidade (${auctionCity}) para garantir a entrega presencial.`);
+    if (userCity !== adCity) {
+      alert(`⚠️ SEGURANÇA: Trocas são permitidas apenas na mesma cidade (${adCity}) para entrega presencial.`);
       return;
     }
 
@@ -94,20 +97,20 @@ const App: React.FC = () => {
       timestamp: Date.now()
     };
 
-    setAuctions(prev => prev.map(a => 
-      a.id === auctionId 
+    setAds(prev => prev.map(a => 
+      a.id === adId 
         ? { ...a, swapOffers: [newOffer, ...(a.swapOffers || [])] } 
         : a
     ));
     alert("🚀 PROPOSTA DE TROCA ENVIADA!");
   };
 
-  const handleAcceptSwap = (auctionId: string, offerId: string) => {
-    setAuctions(prev => prev.map(a => {
-      if (a.id === auctionId) {
+  const handleAcceptSwap = (adId: string, offerId: string) => {
+    setAds(prev => prev.map(a => {
+      if (a.id === adId) {
         return {
           ...a,
-          status: AuctionStatus.SWAP_ACCEPTED,
+          status: AdStatus.SWAP_ACCEPTED,
           swapOffers: a.swapOffers?.map(o => 
             o.id === offerId ? { ...o, status: 'accepted' } : o
           )
@@ -118,15 +121,15 @@ const App: React.FC = () => {
     alert("✅ TROCA ACEITA!");
   };
 
-  const handlePaySwapFee = (auctionId: string) => {
+  const handlePaySwapFee = (adId: string) => {
     if (!user) return;
-    const auction = auctions.find(a => a.id === auctionId);
-    if (!auction) return;
+    const ad = ads.find(a => a.id === adId);
+    if (!ad) return;
     
-    const acceptedOffer = auction.swapOffers?.find(o => o.status === 'accepted');
+    const acceptedOffer = ad.swapOffers?.find(o => o.status === 'accepted');
     if (!acceptedOffer) return;
 
-    const higherValue = Math.max(auction.currentBid, acceptedOffer.offeredItemPrice);
+    const higherValue = Math.max(ad.currentBid, acceptedOffer.offeredItemPrice);
     const fee = higherValue * 0.05;
 
     if (user.balance < fee) return alert("Saldo insuficiente!");
@@ -134,11 +137,11 @@ const App: React.FC = () => {
     const confirmPay = confirm(`Pagar taxa de R$ ${fee.toLocaleString('pt-BR')}?`);
     if (confirmPay) {
       setUser({ ...user, balance: user.balance - fee });
-      setAuctions(prev => prev.map(a => {
-        if (a.id === auctionId) {
+      setAds(prev => prev.map(a => {
+        if (a.id === adId) {
           return {
             ...a,
-            status: AuctionStatus.SWAP_IN_PROGRESS,
+            status: AdStatus.SWAP_IN_PROGRESS,
             swapOffers: a.swapOffers?.map(o => o.status === 'accepted' ? { ...o, status: 'paid' } : o)
           };
         }
@@ -147,7 +150,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSendMessage = (auctionId: string, text: string) => {
+  const handleSendMessage = (adId: string, text: string) => {
     if (!user) return;
     const newMessage: Message = {
       id: Math.random().toString(36).substr(2, 9),
@@ -155,36 +158,34 @@ const App: React.FC = () => {
       text,
       timestamp: Date.now()
     };
-    setAuctions(prev => prev.map(a => 
-      a.id === auctionId ? { ...a, chatMessages: [...(a.chatMessages || []), newMessage] } : a
+    setAds(prev => prev.map(a => 
+      a.id === adId ? { ...a, chatMessages: [...(a.chatMessages || []), newMessage] } : a
     ));
   };
 
   if (loading) return <div className="h-screen bg-white flex items-center justify-center font-black uppercase italic text-3xl text-black">Martelinho...</div>;
   if (!user) return <Auth onLogin={handleLogin} />;
 
-  const selectedAuction = auctions.find(a => a.id === selectedAuctionId);
-  const userHasItems = auctions.some(a => (a.sellerId === 'me' || a.sellerId === user.id) && a.status === AuctionStatus.ACTIVE);
+  const selectedAd = ads.find(a => a.id === selectedAdId);
+  const userHasItems = ads.some(a => (a.sellerId === 'me' || a.sellerId === user.id) && a.status === AdStatus.ACTIVE);
 
-  const filteredAuctions = auctions.filter(a => {
+  const filteredAds = ads.filter(a => {
     const titleMatch = a.title.toLowerCase().includes(searchQuery.toLowerCase());
     const categoryMatch = !selectedCategory || a.category === selectedCategory;
-    const activeMatch = a.status === AuctionStatus.ACTIVE;
+    const activeMatch = a.status === AdStatus.ACTIVE;
     return titleMatch && categoryMatch && activeMatch;
   });
 
   return (
     <Layout 
       user={user} 
-      onNavigate={(page) => { setCurrentPage(page as any); setSelectedAuctionId(null); }} 
+      onNavigate={(page) => { setCurrentPage(page as any); setSelectedAdId(null); }} 
       currentPage={currentPage}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
     >
       {currentPage === 'home' && (
         <div className="flex flex-col md:flex-row gap-6">
-          
-          {/* Menu de Categorias Desktop - Sidebar */}
           <aside className="hidden md:block w-56 shrink-0">
             <div className="sticky top-24 space-y-4">
               <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Categorias</h3>
@@ -209,9 +210,7 @@ const App: React.FC = () => {
             </div>
           </aside>
 
-          {/* Conteúdo Principal */}
           <div className="flex-grow">
-            {/* Menu de Categorias Mobile - Horizontal Scroll */}
             <div className="md:hidden overflow-x-auto pb-4 mb-2 flex gap-2 custom-scrollbar">
               <button 
                 onClick={() => setSelectedCategory(null)} 
@@ -231,14 +230,13 @@ const App: React.FC = () => {
               ))}
             </div>
 
-            {/* Listagem de Itens - Grid Equilibrado */}
-            {filteredAuctions.length > 0 ? (
+            {filteredAds.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
-                {filteredAuctions.map(a => (
-                  <AuctionCard 
+                {filteredAds.map(a => (
+                  <AdCard 
                     key={a.id} 
-                    auction={a} 
-                    onView={(id) => { setSelectedAuctionId(id); setCurrentPage('detail'); }} 
+                    ad={a} 
+                    onView={(id) => { setSelectedAdId(id); setCurrentPage('detail'); }} 
                   />
                 ))}
               </div>
@@ -251,12 +249,12 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {currentPage === 'detail' && selectedAuction && (
-        <AuctionDetail 
-          auction={selectedAuction} 
+      {currentPage === 'detail' && selectedAd && (
+        <AdDetail 
+          ad={selectedAd} 
           user={user}
           userHasItems={userHasItems}
-          userItems={auctions.filter(a => (a.sellerId === 'me' || a.sellerId === user.id) && a.status === AuctionStatus.ACTIVE)}
+          userItems={ads.filter(a => (a.sellerId === 'me' || a.sellerId === user.id) && a.status === AdStatus.ACTIVE)}
           onBack={() => setCurrentPage('home')}
           onPlaceBid={handlePlaceBid}
           onProposeSwap={handleProposeSwap}
@@ -270,7 +268,7 @@ const App: React.FC = () => {
         <ListingForm 
           onSuccess={(item) => { 
             const finalItem = { ...item, sellerId: user.id, sellerName: user.name };
-            setAuctions([finalItem, ...auctions]); 
+            setAds([finalItem, ...ads]); 
             setCurrentPage('home'); 
           }} 
           onCancel={() => setCurrentPage('home')} 
@@ -280,13 +278,21 @@ const App: React.FC = () => {
       {currentPage === 'profile' && (
         <UserProfile 
           user={user} 
-          auctions={auctions} 
+          ads={ads} 
           onUpdateUser={(u) => {
             setUser(u);
             localStorage.setItem('martelinho_user', JSON.stringify(u));
           }} 
           onLogout={handleLogout} 
-          onViewAuction={(id) => { setSelectedAuctionId(id); setCurrentPage('detail'); }} 
+          onViewAd={(id) => { setSelectedAdId(id); setCurrentPage('detail'); }} 
+          onBack={() => setCurrentPage('home')} 
+          onNavigate={(page) => setCurrentPage(page as any)}
+        />
+      )}
+
+      {(currentPage === 'how-it-works' || currentPage === 'fees' || currentPage === 'lgpd') && (
+        <InfoPages 
+          view={currentPage as any} 
           onBack={() => setCurrentPage('home')} 
         />
       )}
