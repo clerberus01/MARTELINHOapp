@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import AuctionCard from './components/AuctionCard';
 import AuctionDetail from './components/AuctionDetail';
@@ -8,8 +8,8 @@ import AdminDashboard from './components/AdminDashboard';
 import LivePresentation from './components/LivePresentation';
 import Auth from './components/Auth';
 import UserProfile from './components/UserProfile';
-import { AuctionItem, AuctionStatus, User, Bid } from './types';
-import { INITIAL_AUCTIONS, PLATFORM_FEE_PERCENTAGE, CATEGORIES } from './constants';
+import { AuctionItem, AuctionStatus, User, Bid, SwapOffer, Message } from './types';
+import { INITIAL_AUCTIONS, CATEGORIES } from './constants';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<'home' | 'create' | 'detail' | 'admin' | 'live' | 'profile'>('home');
@@ -19,16 +19,11 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [locationQuery, setLocationQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-
-  const auctionsSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('martelinho_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
+    if (savedUser) setUser(JSON.parse(savedUser));
 
     const savedAuctions = localStorage.getItem('martelinho_auctions');
     if (savedAuctions) {
@@ -43,251 +38,256 @@ const App: React.FC = () => {
     if (auctions.length > 0) {
       localStorage.setItem('martelinho_auctions', JSON.stringify(auctions));
     }
-
-    const interval = setInterval(() => {
-      const now = Date.now();
-      let changed = false;
-      const updatedAuctions = auctions.map(a => {
-        if (a.status === AuctionStatus.ACTIVE && a.endTime < now) {
-          changed = true;
-          return { ...a, status: a.bidCount > 0 ? AuctionStatus.ENDED : AuctionStatus.CANCELLED };
-        }
-        return a;
-      });
-
-      if (changed) setAuctions(updatedAuctions);
-    }, 5000);
-
-    return () => clearInterval(interval);
   }, [auctions]);
 
   const handleLogin = (userData: User) => {
     const adminUser = { ...userData, isAdmin: userData.name.toLowerCase().includes('admin') };
     setUser(adminUser);
-    if (userData.isTrustedMachine) {
-      localStorage.setItem('martelinho_user', JSON.stringify(adminUser));
-    }
+    localStorage.setItem('martelinho_user', JSON.stringify(adminUser));
   };
 
-  const handleUpdateUser = (updatedUser: User) => {
-    setUser(updatedUser);
-    localStorage.setItem('martelinho_user', JSON.stringify(updatedUser));
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('martelinho_user');
+    setCurrentPage('home');
+    setSelectedAuctionId(null);
   };
 
   const handlePlaceBid = (auctionId: string, amount: number) => {
     if (!user) return;
-    if (user.balance < amount) {
-      alert("Saldo insuficiente para cobrir o lance!");
+    if (user.balance < amount) return alert("Saldo insuficiente!");
+    const newBid: Bid = {
+      id: Math.random().toString(36).substr(2, 5),
+      bidderName: user.name,
+      amount: amount,
+      timestamp: Date.now()
+    };
+    setAuctions(prev => prev.map(a => 
+      a.id === auctionId ? { ...a, currentBid: amount, bidCount: a.bidCount + 1, bids: [newBid, ...(a.bids || [])] } : a
+    ));
+    alert("🔨 LANCE REGISTRADO!");
+  };
+
+  const handleProposeSwap = (auctionId: string, offeredItemId: string) => {
+    if (!user) return;
+    const auction = auctions.find(a => a.id === auctionId);
+    const offeredItem = auctions.find(a => a.id === offeredItemId);
+    
+    if (!auction || !offeredItem) return;
+
+    const userCity = user.address.toLowerCase().split(',')[0].trim();
+    const auctionCity = auction.location.toLowerCase().split(',')[0].trim();
+
+    if (userCity !== auctionCity) {
+      alert(`⚠️ SEGURANÇA: Trocas são permitidas apenas para usuários na mesma cidade (${auctionCity}) para garantir a entrega presencial.`);
       return;
     }
 
-    const confirmBid = confirm(`Confirmar seu lance de R$ ${amount.toLocaleString('pt-BR')}? O valor será reservado pelo Martelinho até a conclusão.`);
-    if (confirmBid) {
-      const newBid: Bid = {
-        id: Math.random().toString(36).substr(2, 5),
-        bidderName: user.name,
-        amount: amount,
-        timestamp: Date.now()
-      };
+    const newOffer: SwapOffer = {
+      id: Math.random().toString(36).substr(2, 9),
+      proposerId: user.id,
+      proposerName: user.name,
+      offeredItemId: offeredItemId,
+      offeredItemTitle: offeredItem.title,
+      offeredItemPrice: offeredItem.currentBid,
+      status: 'pending',
+      timestamp: Date.now()
+    };
 
-      setAuctions(prev => prev.map(a => 
-        a.id === auctionId 
-          ? { 
-              ...a, 
-              currentBid: amount, 
-              bidCount: a.bidCount + 1, 
-              winnerId: 'me',
-              winnerName: user.name,
-              bids: [newBid, ...(a.bids || [])]
-            } 
-          : a
-      ));
-      alert(`🔨 LANCE CONFIRMADO! Você é o líder da disputa.`);
+    setAuctions(prev => prev.map(a => 
+      a.id === auctionId 
+        ? { ...a, swapOffers: [newOffer, ...(a.swapOffers || [])] } 
+        : a
+    ));
+    alert("🚀 PROPOSTA DE TROCA ENVIADA!");
+  };
+
+  const handleAcceptSwap = (auctionId: string, offerId: string) => {
+    setAuctions(prev => prev.map(a => {
+      if (a.id === auctionId) {
+        return {
+          ...a,
+          status: AuctionStatus.SWAP_ACCEPTED,
+          swapOffers: a.swapOffers?.map(o => 
+            o.id === offerId ? { ...o, status: 'accepted' } : o
+          )
+        };
+      }
+      return a;
+    }));
+    alert("✅ TROCA ACEITA!");
+  };
+
+  const handlePaySwapFee = (auctionId: string) => {
+    if (!user) return;
+    const auction = auctions.find(a => a.id === auctionId);
+    if (!auction) return;
+    
+    const acceptedOffer = auction.swapOffers?.find(o => o.status === 'accepted');
+    if (!acceptedOffer) return;
+
+    const higherValue = Math.max(auction.currentBid, acceptedOffer.offeredItemPrice);
+    const fee = higherValue * 0.05;
+
+    if (user.balance < fee) return alert("Saldo insuficiente!");
+
+    const confirmPay = confirm(`Pagar taxa de R$ ${fee.toLocaleString('pt-BR')}?`);
+    if (confirmPay) {
+      setUser({ ...user, balance: user.balance - fee });
+      setAuctions(prev => prev.map(a => {
+        if (a.id === auctionId) {
+          return {
+            ...a,
+            status: AuctionStatus.SWAP_IN_PROGRESS,
+            swapOffers: a.swapOffers?.map(o => o.status === 'accepted' ? { ...o, status: 'paid' } : o)
+          };
+        }
+        return a;
+      }));
     }
   };
 
-  const handleConfirmDelivery = (auctionId: string) => {
-    setAuctions(prev => prev.map(a => a.id === auctionId ? { ...a, status: AuctionStatus.COMPLETED } : a));
-    alert(`NEGÓCIO FINALIZADO! 🎊 O dinheiro foi liberado ao vendedor.`);
+  const handleSendMessage = (auctionId: string, text: string) => {
+    if (!user) return;
+    const newMessage: Message = {
+      id: Math.random().toString(36).substr(2, 9),
+      senderId: user.id,
+      text,
+      timestamp: Date.now()
+    };
+    setAuctions(prev => prev.map(a => 
+      a.id === auctionId ? { ...a, chatMessages: [...(a.chatMessages || []), newMessage] } : a
+    ));
   };
 
-  const handleToggleLiveFeatured = (auctionId: string) => {
-    setAuctions(prev => prev.map(a => a.id === auctionId ? { ...a, isLiveFeatured: !a.isLiveFeatured } : a));
-  };
-
-  const scrollToAuctions = () => {
-    auctionsSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  if (loading) return <div className="min-h-screen bg-yellow-400 flex items-center justify-center font-black uppercase italic">Preparando Lances...</div>;
+  if (loading) return <div className="h-screen bg-white flex items-center justify-center font-black uppercase italic text-3xl text-black">Martelinho...</div>;
   if (!user) return <Auth onLogin={handleLogin} />;
 
   const selectedAuction = auctions.find(a => a.id === selectedAuctionId);
+  const userHasItems = auctions.some(a => (a.sellerId === 'me' || a.sellerId === user.id) && a.status === AuctionStatus.ACTIVE);
 
-  const now = Date.now();
   const filteredAuctions = auctions.filter(a => {
-    const matchesSearch = a.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          a.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesLocation = a.location.toLowerCase().includes(locationQuery.toLowerCase());
-    const matchesCategory = !selectedCategory || a.category === selectedCategory;
-    const isActive = a.status === AuctionStatus.ACTIVE;
-    return matchesSearch && matchesLocation && matchesCategory && isActive;
+    const titleMatch = a.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const categoryMatch = !selectedCategory || a.category === selectedCategory;
+    const activeMatch = a.status === AuctionStatus.ACTIVE;
+    return titleMatch && categoryMatch && activeMatch;
   });
-
-  const endingToday = filteredAuctions.filter(a => (a.endTime - now) < (1000 * 60 * 60 * 24));
-  const otherAuctions = filteredAuctions.filter(a => !endingToday.includes(a));
-  
-  const userHasItems = auctions.some(a => a.sellerId === 'me');
-
-  if (currentPage === 'live' && selectedAuction) {
-    return <LivePresentation auction={selectedAuction} onClose={() => setCurrentPage('admin')} />;
-  }
 
   return (
     <Layout 
-      user={user}
+      user={user} 
       onNavigate={(page) => { setCurrentPage(page as any); setSelectedAuctionId(null); }} 
       currentPage={currentPage}
+      searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
     >
       {currentPage === 'home' && (
-        <div className="space-y-12">
-          {/* Hero Section */}
-          <div className="relative group">
-            <div className="relative rounded-[40px] bg-black p-8 sm:p-16 overflow-hidden shadow-[20px_20px_0px_0px_rgba(250,204,21,1)]">
-              <div className="relative z-10 max-w-3xl text-center sm:text-left">
-                <h2 className="text-5xl sm:text-7xl font-black text-white leading-[0.9] mb-4 uppercase italic tracking-tighter">
-                  DISPUTA DE <br/><span className="text-yellow-400">LANCES!</span>
-                </h2>
-                <p className="text-xl sm:text-2xl font-black text-white/80 uppercase italic tracking-tighter mb-8 max-w-xl leading-tight">
-                  Transforme desapego em dinheiro vivo. A maneira mais divertida de liberar energia e encontrar raridades.
-                </p>
-                <div className="flex flex-wrap justify-center sm:justify-start gap-4 mt-8">
-                  <button onClick={scrollToAuctions} className="bg-black text-yellow-400 border-4 border-yellow-400 font-black px-10 py-5 rounded-xl text-xl uppercase shadow-lg hover:bg-yellow-400 hover:text-black transition-all">Dar Lances 🔎</button>
-                  <button onClick={() => setCurrentPage('create')} className="bg-yellow-400 text-black font-black px-10 py-5 rounded-xl text-xl uppercase shadow-lg hover:rotate-2 transition-all">Vender Itens 🔨</button>
-                  {user.isAdmin && (
-                    <button onClick={() => setCurrentPage('admin')} className="bg-white text-black font-black px-6 py-5 rounded-xl text-xl uppercase border-4 border-black hover:bg-zinc-100 transition-all">Painel Mediação 🎙️</button>
-                  )}
-                </div>
-              </div>
-              <div className="absolute -bottom-10 -right-10 text-[200px] opacity-10 pointer-events-none select-none">🔨</div>
-            </div>
-          </div>
-
-          {/* Busca e Filtros */}
-          <section ref={auctionsSectionRef} className="space-y-6 pt-4">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="flex-grow relative">
-                <input 
-                  type="text" 
-                  placeholder="Busque por produtos em disputa..." 
-                  className="w-full bg-white border-4 border-black p-5 pl-14 rounded-2xl font-black uppercase text-sm shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] focus:ring-4 focus:ring-yellow-400 outline-none"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl">🔍</span>
-              </div>
-              <div className="lg:w-1/3 relative">
-                <input 
-                  type="text" 
-                  placeholder="Cidade, UF (Ex: São Paulo, SP)" 
-                  className="w-full bg-white border-4 border-black p-5 pl-14 rounded-2xl font-black uppercase text-sm shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] focus:ring-4 focus:ring-yellow-400 outline-none"
-                  value={locationQuery}
-                  onChange={(e) => setLocationQuery(e.target.value)}
-                />
-                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl">📍</span>
-              </div>
-            </div>
-
-            {/* Menu de Categorias */}
-            <div className="bg-white border-4 border-black p-6 rounded-[30px] shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-              <div className="flex justify-between items-center mb-4 px-2">
-                <p className="text-[10px] font-black uppercase text-black/40 tracking-widest">Navegar Categorias</p>
-                <p className="text-[10px] font-black uppercase text-yellow-600 animate-pulse">Deslize para ver mais ➔</p>
-              </div>
-              <div className="flex overflow-x-auto gap-4 pb-4 custom-scrollbar">
+        <div className="flex flex-col md:flex-row gap-6">
+          
+          {/* Menu de Categorias Desktop - Sidebar */}
+          <aside className="hidden md:block w-56 shrink-0">
+            <div className="sticky top-24 space-y-4">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Categorias</h3>
+              <div className="flex flex-col gap-1">
                 <button 
-                  onClick={() => setSelectedCategory(null)}
-                  className={`flex-shrink-0 px-8 py-4 rounded-2xl border-4 border-black font-black uppercase text-xs transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${!selectedCategory ? 'bg-black text-white' : 'bg-white text-black'}`}
+                  onClick={() => setSelectedCategory(null)} 
+                  className={`text-left px-4 py-2 text-[10px] font-black uppercase rounded-xl transition-all ${!selectedCategory ? 'bg-black text-yellow-400 shadow-[3px_3px_0px_0px_#FACC15]' : 'text-zinc-600 hover:bg-zinc-100'}`}
                 >
-                  Tudo
+                  📦 Ver Tudo
                 </button>
                 {CATEGORIES.map(cat => (
                   <button 
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.name)}
-                    className={`flex-shrink-0 px-8 py-4 rounded-2xl border-4 border-black font-black uppercase text-xs transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-3 ${selectedCategory === cat.name ? 'bg-black text-white' : 'bg-white text-black'}`}
+                    key={cat.id} 
+                    onClick={() => setSelectedCategory(cat.name)} 
+                    className={`text-left px-4 py-2 text-[10px] font-black uppercase rounded-xl transition-all flex items-center gap-3 ${selectedCategory === cat.name ? 'bg-black text-yellow-400 shadow-[3px_3px_0px_0px_#FACC15]' : 'text-zinc-600 hover:bg-zinc-100'}`}
                   >
-                    <span className="text-xl">{cat.icon}</span>
+                    <span className="text-sm">{cat.icon}</span>
                     {cat.name}
                   </button>
                 ))}
               </div>
             </div>
-          </section>
+          </aside>
 
-          {/* Listagens */}
-          <div className="space-y-12">
-            {endingToday.length > 0 && (
-              <section className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <span className="text-4xl animate-bounce">🔥</span>
-                  <h3 className="text-3xl font-black uppercase italic tracking-tighter text-red-600">Disputas Finais</h3>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                  {endingToday.map(a => <AuctionCard key={a.id} auction={a} onView={(id) => { setSelectedAuctionId(id); setCurrentPage('detail'); }} />)}
-                </div>
-              </section>
-            )}
+          {/* Conteúdo Principal */}
+          <div className="flex-grow">
+            {/* Menu de Categorias Mobile - Horizontal Scroll */}
+            <div className="md:hidden overflow-x-auto pb-4 mb-2 flex gap-2 custom-scrollbar">
+              <button 
+                onClick={() => setSelectedCategory(null)} 
+                className={`shrink-0 px-4 py-2 text-[10px] font-black uppercase rounded-xl border-2 border-black transition-all ${!selectedCategory ? 'bg-black text-yellow-400 shadow-[2px_2px_0px_0px_#FACC15]' : 'bg-white text-zinc-600'}`}
+              >
+                📦 Tudo
+              </button>
+              {CATEGORIES.map(cat => (
+                <button 
+                  key={cat.id} 
+                  onClick={() => setSelectedCategory(cat.name)} 
+                  className={`shrink-0 px-4 py-2 text-[10px] font-black uppercase rounded-xl border-2 border-black transition-all flex items-center gap-2 ${selectedCategory === cat.name ? 'bg-black text-yellow-400 shadow-[2px_2px_0px_0px_#FACC15]' : 'bg-white text-zinc-600'}`}
+                >
+                  <span>{cat.icon}</span>
+                  {cat.name}
+                </button>
+              ))}
+            </div>
 
-            {otherAuctions.length > 0 && (
-              <section className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <span className="text-4xl">📦</span>
-                  <h3 className="text-3xl font-black uppercase italic tracking-tighter text-black">Explorar Lances</h3>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                  {otherAuctions.map(a => (
-                    <AuctionCard key={a.id} auction={a} onView={(id) => { setSelectedAuctionId(id); setCurrentPage('detail'); }} />
-                  ))}
-                </div>
-              </section>
+            {/* Listagem de Itens - Grid Equilibrado */}
+            {filteredAuctions.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+                {filteredAuctions.map(a => (
+                  <AuctionCard 
+                    key={a.id} 
+                    auction={a} 
+                    onView={(id) => { setSelectedAuctionId(id); setCurrentPage('detail'); }} 
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-zinc-50 border-2 border-dashed border-black/5 py-16 text-center rounded-3xl">
+                <p className="text-xs font-black uppercase text-zinc-300 italic">Nenhum desapego aqui no momento.</p>
+              </div>
             )}
           </div>
         </div>
       )}
 
-      {currentPage === 'admin' && (
-        <AdminDashboard 
-          auctions={auctions} 
+      {currentPage === 'detail' && selectedAuction && (
+        <AuctionDetail 
+          auction={selectedAuction} 
+          user={user}
+          userHasItems={userHasItems}
+          userItems={auctions.filter(a => (a.sellerId === 'me' || a.sellerId === user.id) && a.status === AuctionStatus.ACTIVE)}
           onBack={() => setCurrentPage('home')}
-          onStartLive={(id) => { setSelectedAuctionId(id); setCurrentPage('live'); }}
-          onToggleLiveFeatured={handleToggleLiveFeatured}
+          onPlaceBid={handlePlaceBid}
+          onProposeSwap={handleProposeSwap}
+          onAcceptSwap={handleAcceptSwap}
+          onPaySwapFee={handlePaySwapFee}
+          onSendMessage={handleSendMessage}
         />
       )}
 
-      {currentPage === 'create' && <ListingForm onSuccess={(item) => { setAuctions([item, ...auctions]); setCurrentPage('home'); }} onCancel={() => setCurrentPage('home')} />}
-      
+      {currentPage === 'create' && (
+        <ListingForm 
+          onSuccess={(item) => { 
+            const finalItem = { ...item, sellerId: user.id, sellerName: user.name };
+            setAuctions([finalItem, ...auctions]); 
+            setCurrentPage('home'); 
+          }} 
+          onCancel={() => setCurrentPage('home')} 
+        />
+      )}
+
       {currentPage === 'profile' && (
         <UserProfile 
           user={user} 
           auctions={auctions} 
-          onUpdateUser={handleUpdateUser}
-          onViewAuction={(id) => { setSelectedAuctionId(id); setCurrentPage('detail'); }}
-          onBack={() => setCurrentPage('home')}
-        />
-      )}
-
-      {currentPage === 'detail' && selectedAuction && (
-        <AuctionDetail 
-          auction={selectedAuction} 
-          userHasItems={userHasItems}
-          onBack={() => setCurrentPage('home')}
-          onPlaceBid={handlePlaceBid}
-          onOfferSwap={() => alert("Oferta enviada!")} 
-          onConfirmDelivery={handleConfirmDelivery}
-          onCancelAuction={(id) => setAuctions(prev => prev.filter(a => a.id !== id))}
-          onWithdraw={() => {}}
-          onCreateItem={() => setCurrentPage('create')}
+          onUpdateUser={(u) => {
+            setUser(u);
+            localStorage.setItem('martelinho_user', JSON.stringify(u));
+          }} 
+          onLogout={handleLogout} 
+          onViewAuction={(id) => { setSelectedAuctionId(id); setCurrentPage('detail'); }} 
+          onBack={() => setCurrentPage('home')} 
         />
       )}
     </Layout>

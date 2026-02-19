@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { CATEGORIES, TERMS_DISCLAIMER } from '../constants';
+import { CATEGORIES } from '../constants';
 import { analyzeItemForDesapego } from '../services/geminiService';
 import { AuctionStatus } from '../types';
 
@@ -12,208 +12,267 @@ interface ListingFormProps {
 const ListingForm: React.FC<ListingFormProps> = ({ onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [formErrors, setFormErrors] = useState<string[]>([]);
+  
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     categoryId: CATEGORIES[0].id,
-    startingBid: '',
+    startingBid: '1',
+    durationDays: '3',
     location: '',
     deliveryInfo: '',
     acceptsSwap: false,
+    hasDefects: false,
     swapInterests: ''
   });
-  const [image, setImage] = useState<string | null>(null);
+  const [images, setImages] = useState<string[]>([]);
   const [aiSuggestion, setAiSuggestion] = useState<any>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setImage(reader.result as string);
-      reader.readAsDataURL(file);
+    const files = e.target.files;
+    if (files) {
+      const remainingSlots = 5 - images.length;
+      const filesToProcess = Array.from(files).slice(0, remainingSlots);
+      filesToProcess.forEach((file: File) => {
+        const reader = new FileReader();
+        reader.onloadend = () => setImages(prev => [...prev, reader.result as string]);
+        reader.readAsDataURL(file);
+      });
     }
   };
 
-  const handleAnalyze = async () => {
-    if (!formData.title || !formData.description) return;
+  const removeImage = (index: number) => setImages(prev => prev.filter((_, i) => i !== index));
+
+  const validate = () => {
+    const errors: string[] = [];
+    if (!formData.title.trim()) errors.push("Dê um título ao seu desapego.");
+    if (!formData.description.trim()) errors.push("Conte um pouco sobre o estado do item.");
+    if (images.length === 0) errors.push("Adicione pelo menos uma foto real.");
+    if (!formData.location.trim()) errors.push("Informe sua localização.");
+    if (!agreedToTerms) errors.push("Você precisa aceitar os termos da plataforma.");
+    setFormErrors(errors);
+    return errors.length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+
     setLoading(true);
     try {
-      const result = await analyzeItemForDesapego(formData.title, formData.description, image?.split(',')[1]);
-      if (!result.isAllowed) {
-        alert("O Martelinho não aceita veículos oficiais ou itens restritos por lei.");
-        setLoading(false);
-        return;
-      }
-      setAiSuggestion(result);
-    } catch (error) {
-      console.error(error);
-      alert("Erro na análise. Tente novamente.");
+      // Opcional: Análise IA para melhorar o anúncio
+      const suggestion = await analyzeItemForDesapego(formData.title, formData.description, images[0]);
+      setAiSuggestion(suggestion);
+    } catch (err) {
+      console.error("Erro na curadoria IA:", err);
     } finally {
       setLoading(false);
     }
-  };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!agreedToTerms) {
-      alert("Concorde com os termos de intermediação!");
-      return;
-    }
-    
-    // Validação básica de Cidade, UF
-    if (!formData.location.includes(',')) {
-      alert("Por favor, informe a Cidade e o Estado no padrão: Cidade, UF (Ex: Curitiba, PR)");
-      return;
-    }
-
-    const cat = CATEGORIES.find(c => c.id === formData.categoryId);
+    const days = Math.min(Math.max(Number(formData.durationDays), 1), 10);
     const newItem = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: aiSuggestion?.suggestedTitle || formData.title,
-      description: aiSuggestion?.curatedDescription || formData.description,
-      category: cat?.name || 'Outros',
-      startingBid: Number(formData.startingBid),
-      currentBid: Number(formData.startingBid),
+      id: 'auc_' + Math.random().toString(36).substr(2, 9),
+      title: formData.title,
+      description: formData.description,
+      category: CATEGORIES.find(c => c.id === formData.categoryId)?.name || 'Outros',
+      startingBid: Number(formData.startingBid) || 1,
+      currentBid: Number(formData.startingBid) || 1,
       bidCount: 0,
-      imageUrl: image || 'https://images.unsplash.com/photo-1581539250439-c96689b516dd?q=80&w=600&auto=format&fit=crop',
+      imageUrl: images[0],
+      imageUrls: images,
       sellerId: 'me',
-      sellerName: 'João_Silva_99',
-      endTime: Date.now() + 1000 * 60 * 60 * 24 * 3,
+      sellerName: 'você',
+      endTime: Date.now() + 1000 * 60 * 60 * 24 * days,
       status: AuctionStatus.ACTIVE,
-      energyScore: aiSuggestion?.energyScore || 5,
-      energyMessage: aiSuggestion?.energyMessage || 'Oportunidade boa para o comprador!',
+      energyScore: 7,
       location: formData.location,
-      deliveryInfo: formData.deliveryInfo || 'Combinar com o vendedor',
+      deliveryInfo: formData.deliveryInfo || 'A combinar entrega presencial',
       acceptsSwap: formData.acceptsSwap,
-      swapInterests: formData.swapInterests
+      hasDefects: formData.hasDefects,
+      bids: [],
+      swapOffers: [],
+      chatMessages: []
     };
-    onSuccess(newItem);
+
+    setShowSuccess(true);
+    setTimeout(() => onSuccess(newItem), 2000);
   };
 
   return (
-    <div className="max-w-4xl mx-auto bg-white rounded-2xl border-4 border-black p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] mb-20">
-      <div className="flex items-center gap-3 mb-8">
-        <span className="text-3xl font-black">🔨</span>
-        <h2 className="text-3xl font-black text-black uppercase italic tracking-tighter">Abrir para Lances</h2>
-      </div>
-      
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          <div className="space-y-5">
+    <div className="max-w-2xl mx-auto bg-white border-4 border-black rounded-[32px] p-6 sm:p-10 shadow-[12px_12px_0px_0px_#000] mb-20">
+      {showSuccess ? (
+        <div className="py-20 text-center animate-in zoom-in duration-300">
+          <span className="text-6xl block mb-6 animate-bounce">🔨</span>
+          <h2 className="text-3xl font-black uppercase italic tracking-tighter">MARTELO BATIDO!</h2>
+          <p className="text-zinc-400 font-bold uppercase text-xs mt-2 tracking-widest">Seu anúncio já está no ar.</p>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="flex justify-between items-end border-b-4 border-black pb-4">
             <div>
-              <label className="block text-xs font-black text-black uppercase mb-1">Nome do Item</label>
-              <input 
-                type="text" required
-                className="w-full px-4 py-3 rounded-xl border-4 border-black font-bold outline-none focus:ring-4 focus:ring-yellow-400"
-                value={formData.title}
-                onChange={e => setFormData({...formData, title: e.target.value})}
-              />
+              <h2 className="text-2xl font-black uppercase italic tracking-tighter leading-none">Anunciar Desapego</h2>
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Transforme o que você não usa em dinheiro no bolso</p>
             </div>
-            
-            <div className="grid grid-cols-2 gap-4">
+            <button onClick={onCancel} type="button" className="text-xs font-black uppercase underline decoration-2 decoration-red-500 hover:text-red-500 transition-colors">Desistir</button>
+          </div>
+
+          {formErrors.length > 0 && (
+            <div className="bg-red-50 border-2 border-red-500 p-4 rounded-xl">
+              <ul className="list-disc list-inside text-[10px] font-black uppercase text-red-600">
+                {formErrors.map((err, i) => <li key={i}>{err}</li>)}
+              </ul>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Seção de Fotos e Detalhes */}
+            <div className="space-y-6">
               <div>
-                <label className="block text-xs font-black text-black uppercase mb-1">Categoria</label>
+                <label className="block text-[10px] font-black uppercase mb-2 tracking-widest text-zinc-400">Fotos Reais (Máx 5)</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {images.map((img, i) => (
+                    <div key={i} className="aspect-square relative border-2 border-black rounded-xl overflow-hidden group">
+                      <img src={img} className="w-full h-full object-cover" />
+                      <button 
+                        type="button"
+                        onClick={() => removeImage(i)} 
+                        className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white font-black text-xs"
+                      >
+                        REMOVER
+                      </button>
+                    </div>
+                  ))}
+                  {images.length < 5 && (
+                    <div className="relative aspect-square border-2 border-dashed border-black rounded-xl flex flex-col items-center justify-center bg-zinc-50 hover:bg-yellow-50 cursor-pointer transition-colors">
+                      <span className="text-2xl font-black">+</span>
+                      <span className="text-[8px] font-black uppercase">Adicionar</span>
+                      <input type="file" multiple accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageChange} />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black uppercase mb-1 tracking-widest text-zinc-400">Descrição do Estado</label>
+                <textarea 
+                  required
+                  className="w-full bg-zinc-50 border-2 border-black p-4 rounded-xl text-xs font-bold min-h-[120px] focus:ring-4 ring-yellow-400 transition-all outline-none" 
+                  placeholder="Seja honesto: tempo de uso, se tem marcas, detalhes técnicos..."
+                  value={formData.description} 
+                  onChange={e => setFormData({...formData, description: e.target.value})} 
+                />
+              </div>
+            </div>
+
+            {/* Seção de Dados do Leilão */}
+            <div className="space-y-5">
+              <div>
+                <label className="block text-[10px] font-black uppercase mb-1 tracking-widest text-zinc-400">O que você está vendendo?</label>
+                <input 
+                  type="text" required
+                  className="w-full bg-zinc-50 border-2 border-black p-3 rounded-xl text-sm font-black uppercase focus:ring-4 ring-yellow-400 outline-none" 
+                  placeholder="Ex: Furadeira Bosch 500W"
+                  value={formData.title} 
+                  onChange={e => setFormData({...formData, title: e.target.value})} 
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase mb-1 tracking-widest text-zinc-400">Lance Inicial (R$)</label>
+                  <input 
+                    type="number" required min="1"
+                    className="w-full bg-zinc-50 border-2 border-black p-3 rounded-xl text-lg font-black focus:ring-4 ring-yellow-400 outline-none" 
+                    value={formData.startingBid} 
+                    onChange={e => setFormData({...formData, startingBid: e.target.value})} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase mb-1 tracking-widest text-zinc-400">Duração (Dias)</label>
+                  <select 
+                    className="w-full bg-zinc-50 border-2 border-black p-3 rounded-xl text-sm font-black appearance-none focus:ring-4 ring-yellow-400 outline-none"
+                    value={formData.durationDays}
+                    onChange={e => setFormData({...formData, durationDays: e.target.value})}
+                  >
+                    {[1,2,3,5,7,10].map(d => <option key={d} value={d}>{d} Dias</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black uppercase mb-1 tracking-widest text-zinc-400">Categoria</label>
                 <select 
-                  className="w-full px-4 py-3 rounded-xl border-4 border-black font-bold outline-none"
+                  className="w-full bg-zinc-50 border-2 border-black p-3 rounded-xl text-xs font-black uppercase appearance-none focus:ring-4 ring-yellow-400 outline-none"
                   value={formData.categoryId}
                   onChange={e => setFormData({...formData, categoryId: e.target.value})}
                 >
-                  {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {CATEGORIES.map(cat => <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-black text-black uppercase mb-1">Lance Mínimo (R$)</label>
-                <input 
-                  type="number" required
-                  className="w-full px-4 py-3 rounded-xl border-4 border-black font-black outline-none"
-                  value={formData.startingBid}
-                  onChange={e => setFormData({...formData, startingBid: e.target.value})}
-                />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 gap-4">
               <div>
-                <label className="block text-xs font-black text-black uppercase mb-1">Localização (Cidade, UF)</label>
+                <label className="block text-[10px] font-black uppercase mb-1 tracking-widest text-zinc-400">Localização (Cidade, UF)</label>
                 <input 
                   type="text" required
-                  className="w-full px-4 py-3 rounded-xl border-4 border-black font-bold outline-none"
-                  value={formData.location}
-                  onChange={e => setFormData({...formData, location: e.target.value})}
+                  className="w-full bg-zinc-50 border-2 border-black p-3 rounded-xl text-xs font-bold uppercase focus:ring-4 ring-yellow-400 outline-none" 
                   placeholder="Ex: Curitiba, PR"
-                />
-                <p className="text-[9px] font-bold text-black/40 uppercase mt-1">Apenas Cidade e Sigla do Estado.</p>
-              </div>
-              <div>
-                <label className="block text-xs font-black text-black uppercase mb-1">Instruções de Entrega</label>
-                <input 
-                  type="text" required
-                  className="w-full px-4 py-3 rounded-xl border-4 border-black font-bold outline-none"
-                  value={formData.deliveryInfo}
-                  onChange={e => setFormData({...formData, deliveryInfo: e.target.value})}
-                  placeholder="Ex: Retirar no centro ou envio por Uber."
+                  value={formData.location} 
+                  onChange={e => setFormData({...formData, location: e.target.value})} 
                 />
               </div>
-            </div>
 
-            <div className="bg-emerald-50 p-4 rounded-xl border-2 border-black/5">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  className="w-5 h-5 accent-black"
-                  checked={formData.acceptsSwap}
-                  onChange={e => setFormData({...formData, acceptsSwap: e.target.checked})}
-                />
-                <span className="text-xs font-black uppercase text-emerald-800">Aceito Ofertas de Troca</span>
-              </label>
+              <div className="flex flex-col gap-3 pt-2">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <input 
+                    type="checkbox" 
+                    className="w-5 h-5 accent-black border-2 border-black rounded" 
+                    checked={formData.acceptsSwap} 
+                    onChange={e => setFormData({...formData, acceptsSwap: e.target.checked})} 
+                  />
+                  <span className="text-[10px] font-black uppercase group-hover:text-black transition-colors">Aceito Propostas de Troca 🔄</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <input 
+                    type="checkbox" 
+                    className="w-5 h-5 accent-black border-2 border-black rounded" 
+                    checked={formData.hasDefects} 
+                    onChange={e => setFormData({...formData, hasDefects: e.target.checked})} 
+                  />
+                  <span className="text-[10px] font-black uppercase group-hover:text-black transition-colors">O item possui detalhes/defeitos ⚠️</span>
+                </label>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col">
-            <div className="relative flex-grow min-h-[200px] rounded-2xl bg-yellow-50 border-4 border-dashed border-black/20 flex flex-col items-center justify-center overflow-hidden">
-              {image ? <img src={image} className="w-full h-full object-cover" /> : <p className="text-[10px] font-black uppercase text-black/40">Foto do Desapego</p>}
-              <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageChange} />
-            </div>
-            <textarea 
-              required
-              className="mt-4 w-full px-4 py-3 rounded-xl border-4 border-black font-medium h-32 outline-none"
-              value={formData.description}
-              onChange={e => setFormData({...formData, description: e.target.value})}
-              placeholder="Detalhes sobre o estado do item..."
-            />
-          </div>
-        </div>
+          <div className="bg-black text-white p-6 rounded-2xl space-y-4">
+             <label className="flex items-start gap-4 cursor-pointer">
+                <input 
+                  type="checkbox" required
+                  className="w-6 h-6 accent-yellow-400 mt-1 shrink-0" 
+                  checked={agreedToTerms} 
+                  onChange={e => setAgreedToTerms(e.target.checked)} 
+                />
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black uppercase text-yellow-400 block">Termo de Responsabilidade</span>
+                  <span className="text-[9px] font-medium leading-tight text-zinc-400 block">
+                    Declaro que o item é meu e as fotos são reais. Entendo que o Martelinho retém 10% de comissão e que sou responsável pela entrega conforme combinado no chat após o arremate.
+                  </span>
+                </div>
+             </label>
 
-        <div className="pt-6">
-          <label className="flex items-center gap-3 cursor-pointer bg-slate-50 p-4 rounded-xl border-2 border-black/5">
-            <input 
-              type="checkbox" 
-              className="w-6 h-6 accent-black" 
-              checked={agreedToTerms} 
-              onChange={e => setAgreedToTerms(e.target.checked)} 
-            />
-            <span className="text-[10px] font-black uppercase text-slate-600">
-              Estou ciente que o Martelinho apenas intermedia o pagamento via lances e que a entrega é por minha conta e risco combinada com o comprador.
-            </span>
-          </label>
-          
-          <button 
-            type="button" onClick={handleAnalyze} disabled={loading}
-            className="mt-6 w-full bg-black text-white font-black py-5 rounded-xl uppercase hover:bg-zinc-800"
-          >
-            {loading ? 'Analisando...' : 'Validar Oferta 🤖'}
-          </button>
-          
-          {aiSuggestion && (
-            <button 
-              type="submit" disabled={!agreedToTerms}
-              className="mt-4 w-full bg-yellow-400 text-black border-4 border-black font-black py-5 rounded-xl uppercase shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
-            >
-              Publicar Disputa! 🔨
-            </button>
-          )}
-        </div>
-      </form>
+             <button 
+                type="submit" 
+                disabled={loading}
+                className={`w-full py-5 rounded-xl font-black text-xl uppercase italic tracking-tighter border-4 border-white transition-all
+                  ${loading ? 'bg-zinc-800 cursor-wait' : 'bg-yellow-400 text-black shadow-[0_6px_0_0_#fff] hover:translate-y-1 hover:shadow-none'}`}
+              >
+                {loading ? 'ANALISANDO...' : 'PUBLICAR AGORA 🔨'}
+              </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 };

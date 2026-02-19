@@ -9,7 +9,16 @@ export const TERMS_DISCLAIMER = {
   delivery: "O Martelinho atua exclusivamente como intermediário financeiro. O frete e a integridade do item são de responsabilidade TOTAL das partes envolvidas.",
   fees: "Nossas taxas são retidas no ato do arremate. Não há estorno de taxas em caso de desistência, pois o serviço de intermediação é prestado no fechamento do lance.",
   autoRelease: "Segurança: O dinheiro fica em custódia. O comprador tem 72h após o recebimento para contestar. Sem aviso, o valor é liberado automaticamente ao vendedor.",
-  cancellation: "Responsabilidade: Usuários que derem lances e não honrarem o pagamento serão banidos permanentemente e seus dados poderão ser enviados às autoridades competentes em caso de fraude deliberada."
+  cancellation: "Responsabilidade: Usuários que não honrarem o pagamento serão banidos e seus dados preservados para fins de cobrança e segurança jurídica."
+};
+
+export const PRIVACY_POLICY = {
+  title: "Política de Privacidade & LGPD",
+  content: `Coletamos seu CPF e Endereço exclusivamente para: 
+    1. Garantir a segurança jurídica das transações (intermediação de compra e venda).
+    2. Possibilitar a logística entre as partes.
+    3. Cumprir obrigações legais de identificação em transações financeiras.
+    Seus dados NÃO são compartilhados com terceiros para fins de marketing. Você pode solicitar a exclusão de seus dados a qualquer momento em seu perfil.`
 };
 
 export interface CategoryInfo {
@@ -41,6 +50,10 @@ export const INITIAL_AUCTIONS = [
     currentBid: 185,
     bidCount: 8,
     imageUrl: 'https://images.unsplash.com/photo-1504148455328-497c596d229f?q=80&w=600&auto=format&fit=crop',
+    imageUrls: [
+      'https://images.unsplash.com/photo-1504148455328-497c596d229f?q=80&w=600&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1581539250439-c96689b516dd?q=80&w=600&auto=format&fit=crop'
+    ],
     sellerId: 'seller_1',
     sellerName: 'Marcos_Bicos',
     endTime: Date.now() + 1000 * 60 * 60 * 4,
@@ -50,18 +63,23 @@ export const INITIAL_AUCTIONS = [
     location: 'São Paulo, SP',
     deliveryInfo: 'Entrego em mãos na Linha Vermelha do Metrô.',
     acceptsSwap: true,
+    hasDefects: false,
     swapInterests: 'Aceito ferramentas manuais.',
     isLiveFeatured: true
   },
   {
     id: '2',
     title: 'Guitarra Giannini Antiga',
-    description: 'Som vintage, precisa de cordas novas. Um achado para colecionador.',
+    description: 'Som vintage, precisa de cordas novas. O captador da ponte está com mau contato intermitente. Um achado para colecionador que saiba mexer.',
     category: 'Instrumentos Musicais',
     startingBid: 250,
     currentBid: 310,
     bidCount: 12,
     imageUrl: 'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?q=80&w=600&auto=format&fit=crop',
+    imageUrls: [
+      'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?q=80&w=600&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1605020420620-20c943cc4669?q=80&w=600&auto=format&fit=crop'
+    ],
     sellerId: 'seller_2',
     sellerName: 'Rock_Store',
     endTime: Date.now() + 1000 * 60 * 60 * 20,
@@ -71,6 +89,7 @@ export const INITIAL_AUCTIONS = [
     location: 'Rio de Janeiro, RJ',
     deliveryInfo: 'Combinar retirada.',
     acceptsSwap: false,
+    hasDefects: true,
     isLiveFeatured: true
   }
 ];

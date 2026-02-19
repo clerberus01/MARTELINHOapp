@@ -6,6 +6,7 @@ export enum AuctionStatus {
   PENDING_PAYMENT = 'pending_payment',
   PAID_PENDING_DELIVERY = 'paid_pending_delivery',
   SWAP_IN_PROGRESS = 'swap_in_progress',
+  SWAP_ACCEPTED = 'swap_accepted',
   COMPLETED = 'completed',
   DISPUTE = 'dispute'
 }
@@ -14,6 +15,24 @@ export interface Bid {
   id: string;
   bidderName: string;
   amount: number;
+  timestamp: number;
+}
+
+export interface SwapOffer {
+  id: string;
+  proposerId: string;
+  proposerName: string;
+  offeredItemId: string;
+  offeredItemTitle: string;
+  offeredItemPrice: number;
+  status: 'pending' | 'accepted' | 'rejected' | 'paid';
+  timestamp: number;
+}
+
+export interface Message {
+  id: string;
+  senderId: string;
+  text: string;
   timestamp: number;
 }
 
@@ -26,8 +45,10 @@ export interface AuctionItem {
   currentBid: number;
   bidCount: number;
   imageUrl: string;
+  imageUrls: string[];
   sellerId: string;
   sellerName: string;
+  sellerReputation?: number; // Score 0-100 do vendedor na época do anúncio
   endTime: number;
   status: AuctionStatus;
   energyScore: number;
@@ -35,12 +56,15 @@ export interface AuctionItem {
   location: string;
   deliveryInfo: string;
   acceptsSwap: boolean;
+  hasDefects: boolean;
   swapInterests?: string;
   paymentTimestamp?: number;
   winnerId?: string;
   winnerName?: string;
   isLiveFeatured?: boolean;
-  bids?: Bid[]; // Histórico de lances para o Modo Apresentador
+  bids?: Bid[];
+  swapOffers?: SwapOffer[];
+  chatMessages?: Message[];
 }
 
 export interface User {
@@ -48,7 +72,7 @@ export interface User {
   name: string;
   fullName: string;
   email: string;
-  phone: string; // Novo campo para segurança
+  phone: string;
   cpf: string;
   address: string;
   avatar: string;
@@ -57,4 +81,7 @@ export interface User {
   isTrustedMachine?: boolean;
   isAdmin?: boolean;
   lastNickChange?: number;
+  reputationScore: number; // 0-100
+  successfulDeals: number;
+  totalRatings: number;
 }

@@ -6,18 +6,21 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const analyzeItemForDesapego = async (title: string, description: string, imageBase64?: string) => {
   const prompt = `
-    Você é o assistente do app "Martelinho", um app de intermediação de vendas diretas por lances.
-    NÃO use a palavra "Leilão" de forma oficial. Use termos como "Disputa de Lances", "Oportunidade de Desapego".
-    Analise este item:
-    Item: ${title}
+    Você é o curador especialista do app "Martelinho", um app de intermediação de vendas diretas e desapegos.
+    
+    Analise este item que o usuário deseja anunciar:
+    Título: ${title}
     Descrição: ${description}
     
-    1. Certifique-se que o item é de uso comum e não requer registro oficial (como veículos documentados).
-    2. Crie um "Score de Oportunidade" de 1 a 10.
-    3. Escreva um comentário empolgante chamando interessados para darem lances.
-    4. Melhore o título e a descrição para atrair mais interessados.
+    SUAS TAREFAS:
+    1. Verifique se o item é permitido. Bloqueie (isAllowed: false) itens como: drogas, armas, serviços ilegais, ou veículos que exigem transferência de documento complexa (carros/motos inteiros). Itens de uso comum (eletrônicos, móveis, ferramentas, peças) são permitidos.
+    2. Crie um "suggestedTitle": Um título curto, profissional e impactante para vender rápido.
+    3. Crie uma "curatedDescription": Uma descrição limpa, organizada e sem erros, destacando os pontos fortes do produto.
+    4. Gere um "energyScore": Nota de 1 a 10 baseada na qualidade do anúncio e demanda do item.
+    5. Crie uma "energyMessage": Uma frase curta e empolgante que aparecerá no anúncio para incentivar as pessoas a darem lances agora.
     
-    Retorne em JSON.
+    IMPORTANTE: Use um tom "Brutalista", direto ao ponto, honesto e vibrante.
+    Retorne estritamente em JSON.
   `;
 
   const response = await ai.models.generateContent({
@@ -41,7 +44,6 @@ export const analyzeItemForDesapego = async (title: string, description: string,
     }
   });
 
-  // Extract text output using the .text property (not a method)
   const resultText = response.text || '{}';
   return JSON.parse(resultText);
 };
@@ -49,17 +51,15 @@ export const analyzeItemForDesapego = async (title: string, description: string,
 export const generateAuctionUpdate = async (auctionTitle: string, currentBid: number) => {
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `O item "${auctionTitle}" recebeu um lance de R$ ${currentBid}. Incentive outros interessados a cobrirem esse lance agora de forma empolgante, sem usar a palavra "Leiloeiro".`
+    contents: `O item "${auctionTitle}" recebeu um novo lance de R$ ${currentBid}. Incentive outros interessados no app Martelinho a cobrirem esse lance agora de forma direta e empolgante.`
   });
-  // Use the .text property directly
   return response.text;
 };
 
 export const generateLiveScript = async (title: string, currentBid: number, description: string) => {
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Apresentador de ofertas estilo TikTok. O produto é "${title}" (Lance atual: R$ ${currentBid}). Descrição: "${description}". Crie argumentos rápidos para eu falar na live incentivando o pessoal a entrar na disputa de lances.`
+    contents: `Apresentador de ofertas no Martelinho. Produto: "${title}" (Lance: R$ ${currentBid}). Descrição: "${description}". Crie 3 argumentos rápidos e matadores para eu falar em uma live de 30 segundos incentivando lances imediatos.`
   });
-  // Use the .text property directly
   return response.text;
 };
